@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Downloader - Research Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .form-check-input:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .progress {
+            height: 25px;
+            border-radius: 15px;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        .progress-bar {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 15px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-idle { background-color: #6c757d; }
+        .status-running { background-color: #28a745; animation: pulse 1.5s infinite; }
+        .status-error { background-color: #dc3545; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .keyword-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .custom-keyword-input {
+            border-radius: 20px;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+        .custom-keyword-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .captcha-card {
+            border: 2px solid #ffc107;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        }
+        .captcha-card .card-title {
+            color: #856404;
+        }
+        .btn-warning {
+            background: linear-gradient(45deg, #ffc107, #ff8c00);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 193, 7, 0.3);
+        }
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="main-container p-5">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold text-primary mb-3">
+                    <i class="fas fa-file-pdf me-3"></i>PDF Research Downloader
+                </h1>
+                <p class="lead text-muted">Automated PDF collection tool for research and analysis</p>
+            </div>
+
+            <!-- Status Card -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>System Status
+                    </h5>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator" id="statusIndicator"></span>
+                        <span id="statusText">Checking status...</span>
+                    </div>
+                    <div class="mt-3" id="statusDetails"></div>
+                </div>
+            </div>
+
+            <!-- CAPTCHA Status Card -->
+            <div class="card mb-4 captcha-card" id="captchaCard" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        <i class="fas fa-shield-alt me-2"></i>CAPTCHA Detected
+                    </h5>
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="captchaMessage">CAPTCHA detected! Please solve it manually.</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Please solve the CAPTCHA in the browser window and then click Resume.
+                        </small>
+                        <button class="btn btn-warning" id="resumeButton" onclick="resumeDownload()">
+                            <i class="fas fa-play me-2"></i>Resume Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Card -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-cog me-2"></i>Configuration
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Max PDFs per keyword</label>
+                            <input type="number" class="form-control" id="maxPdfs" value="200" min="1" max="1000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Max pages per search</label>
+                            <input type="number" class="form-control" id="maxPages" value="3" min="1" max="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Keywords Card -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-plus me-2"></i>Custom Keywords
+                    </h5>
+                    <div class="mb-3">
+                        <label class="form-label">Add custom search keywords (one per line)</label>
+                        <textarea class="form-control custom-keyword-input" id="customKeywords" rows="4" 
+                                  placeholder="Enter custom keywords here...&#10;Example:&#10;machine learning security&#10;blockchain privacy&#10;IoT vulnerabilities"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center mb-4">
+                <button class="btn btn-primary btn-lg me-3" id="startDownload" onclick="startDownload()">
+                    <i class="fas fa-download me-2"></i>Start Download
+                </button>
+                <button class="btn btn-danger btn-lg me-3" id="stopDownload" onclick="stopDownload()" style="display: none;">
+                    <i class="fas fa-stop me-2"></i>Stop Download
+                </button>
+                <button class="btn btn-outline-secondary btn-lg" onclick="refreshStatus()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh Status
+                </button>
+            </div>
+
+            <!-- Progress Card -->
+            <div class="card mb-4" id="progressCard" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-chart-line me-2"></i>Download Progress
+                    </h5>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div id="progressDetails"></div>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="card" id="resultsCard" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-check-circle me-2"></i>Download Results
+                    </h5>
+                    <div id="resultsDetails"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let fieldsData = {};
+        let statusInterval;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFields();
+            refreshStatus();
+            statusInterval = setInterval(refreshStatus, 5000); // Refresh every 5 seconds
+        });
+
+        async function loadFields() {
+            try {
+                const response = await fetch('/api/fields');
+                fieldsData = await response.json();
+                renderFields();
+            } catch (error) {
+                console.error('Error loading fields:', error);
+            }
+        }
+
+        function renderFields() {
+            const container = document.getElementById('fieldsContainer');
+            container.innerHTML = '';
+
+            Object.entries(fieldsData).forEach(([fieldName, keywords]) => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'col-md-6 mb-3';
+                fieldDiv.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="field_${fieldName}" value="${fieldName}">
+                        <label class="form-check-label" for="field_${fieldName}">
+                            <strong>${fieldName.replace('_', ' ').toUpperCase()}</strong>
+                            <small class="text-muted d-block">${keywords.length} keywords</small>
+                        </label>
+                        <div class="keyword-list mt-2">
+                            ${keywords.slice(0, 5).map(keyword => 
+                                `<small class="text-muted d-block">• ${keyword}</small>`
+                            ).join('')}
+                            ${keywords.length > 5 ? `<small class="text-muted">... and ${keywords.length - 5} more</small>` : ''}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(fieldDiv);
+            });
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/download-status');
+                const status = await response.json();
+                updateStatusDisplay(status);
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+            }
+        }
+
+        function updateStatusDisplay(status) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const statusDetails = document.getElementById('statusDetails');
+            const captchaCard = document.getElementById('captchaCard');
+            const startButton = document.getElementById('startDownload');
+            const stopButton = document.getElementById('stopDownload');
+
+            if (status.captcha_detected) {
+                // Show CAPTCHA status
+                indicator.className = 'status-indicator status-error';
+                statusText.textContent = 'CAPTCHA Detected';
+                statusDetails.innerHTML = '<small class="text-warning">Download paused - CAPTCHA needs to be solved</small>';
+                captchaCard.style.display = 'block';
+                document.getElementById('captchaMessage').textContent = status.captcha_message || 'CAPTCHA detected! Please solve it manually.';
+                document.getElementById('progressCard').style.display = 'none';
+                startButton.style.display = 'none';
+                stopButton.style.display = 'inline-block';
+            } else if (status.is_running) {
+                // Hide CAPTCHA card when running normally
+                captchaCard.style.display = 'none';
+                indicator.className = 'status-indicator status-running';
+                statusText.textContent = 'Download in progress...';
+                statusDetails.innerHTML = '<small class="text-muted">Processing keywords and downloading PDFs</small>';
+                document.getElementById('progressCard').style.display = 'block';
+                startButton.style.display = 'none';
+                stopButton.style.display = 'inline-block';
+            } else if (status.error) {
+                captchaCard.style.display = 'none';
+                indicator.className = 'status-indicator status-error';
+                
+                // Check if it's a browser closure error
+                if (status.error.includes('browser was closed')) {
+                    statusText.textContent = 'Browser Closed';
+                    statusDetails.innerHTML = '<small class="text-danger">Download process stopped - browser was closed unexpectedly. Please restart the download.</small>';
+                } else if (status.error.includes('stopped by user')) {
+                    statusText.textContent = 'Download Stopped';
+                    statusDetails.innerHTML = '<small class="text-info">Download was stopped by user. You can start a new download when ready.</small>';
+                } else {
+                    statusText.textContent = 'Error occurred';
+                    statusDetails.innerHTML = `<small class="text-danger">${status.error}</small>`;
+                }
+                
+                document.getElementById('progressCard').style.display = 'none';
+                startButton.style.display = 'inline-block';
+                stopButton.style.display = 'none';
+            } else {
+                captchaCard.style.display = 'none';
+                indicator.className = 'status-indicator status-idle';
+                statusText.textContent = 'Ready';
+                statusDetails.innerHTML = '<small class="text-muted">System ready for new downloads</small>';
+                document.getElementById('progressCard').style.display = 'none';
+                startButton.style.display = 'inline-block';
+                stopButton.style.display = 'none';
+            }
+
+            if (status.results && Object.keys(status.results).length > 0) {
+                displayResults(status.results);
+            }
+        }
+
+        function displayResults(results) {
+            const resultsCard = document.getElementById('resultsCard');
+            const resultsDetails = document.getElementById('resultsDetails');
+            
+            let html = '';
+            Object.entries(results).forEach(([field, fieldResults]) => {
+                html += `<h6 class="text-primary">${field.replace('_', ' ').toUpperCase()}</h6>`;
+                fieldResults.forEach(result => {
+                    if (result.error) {
+                        html += `<div class="text-danger mb-2">❌ ${result.keyword}: ${result.error}</div>`;
+                    } else {
+                        html += `<div class="text-success mb-2">✅ ${result.keyword}: ${result.downloaded_count} PDFs downloaded</div>`;
+                    }
+                });
+            });
+            
+            resultsDetails.innerHTML = html;
+            resultsCard.style.display = 'block';
+        }
+
+        async function startDownload() {
+            const selectedFields = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+            
+            const customKeywords = document.getElementById('customKeywords').value
+                .split('\n')
+                .map(k => k.trim())
+                .filter(k => k.length > 0);
+
+            if (selectedFields.length === 0 && customKeywords.length === 0) {
+                alert('Please select at least one field or add custom keywords.');
+                return;
+            }
+
+            const maxPdfs = parseInt(document.getElementById('maxPdfs').value);
+            const maxPages = parseInt(document.getElementById('maxPages').value);
+
+            try {
+                const response = await fetch('/api/start-download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        fields: selectedFields,
+                        custom_keywords: customKeywords,
+                        max_pdfs: maxPdfs,
+                        max_pages: maxPages
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Download started successfully!');
+                    refreshStatus();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error starting download:', error);
+                alert('Error starting download. Please try again.');
+            }
+        }
+
+        async function resumeDownload() {
+            try {
+                const response = await fetch('/api/resume-download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Download resumed successfully!');
+                    refreshStatus();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error resuming download:', error);
+                alert('Error resuming download. Please try again.');
+            }
+        }
+
+        async function stopDownload() {
+            // Confirm before stopping
+            if (!confirm('Are you sure you want to stop the download? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/stop-download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Download stopped successfully!');
+                    refreshStatus();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error stopping download:', error);
+                alert('Error stopping download. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html> 
